@@ -23,7 +23,7 @@ worker_data = queue.Queue()
 def process_mod(mod_id):
     print("Processing mod " + str(mod_id))
     wd = config['notify']['netkan-path']
-    #call(['git', 'fetch', 'origin'], cwd=wd)
+    call(['git', 'fetch', 'origin'], cwd=wd)
     call(['git', 'reset', '--hard', 'origin/master'], cwd=wd)
     identifiers = list()
     netkan_path = os.path.join(wd, "NetKAN")
