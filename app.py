@@ -1,0 +1,95 @@
+from flask import Flask, request
+import configparser
+import json
+import os
+import requests
+import threading
+import queue
+from subprocess import call
+app = Flask(__name__)
+
+#Config
+config = configparser.ConfigParser()
+def loadconfig():
+    if not os.path.isfile('config.ini'):
+        config['notify'] = { 'address': '127.0.0.1', 'port': '8085', 'api-url': 'http://spacedock.info/api/mod/', 'notify-urls': json.dumps(['http://ckan-url/']), 'celery': 'redis://localhost/1', 'netkan-path': 'NetKAN'}
+        with open('config.ini', 'w') as f:
+            config.write(f)
+    config.read('config.ini')
+loadconfig()
+#Threading
+worker_data = queue.Queue()
+
+def process_mod(mod_id):
+    print("Processing mod " + str(mod_id))
+    wd = config['notify']['netkan-path']
+    #call(['git', 'fetch', 'origin'], cwd=wd)
+    call(['git', 'reset', '--hard', 'origin/master'], cwd=wd)
+    identifiers = list()
+    netkan_path = os.path.join(wd, "NetKAN")
+    kref_match = '#/ckan/spacedock/' + str(mod_id)
+    for filename in os.listdir(netkan_path):
+        file_path = os.path.join(netkan_path, filename)
+        if not filename.endswith('.netkan'):
+            continue
+        if not os.path.isfile(file_path):
+            continue
+        try:
+            with open(file_path, 'r') as f:
+                mod_data = json.load(f)
+                if not '$kref' in mod_data:
+                    continue
+                mod_identifier = mod_data['identifier']
+                mod_kref = mod_data['$kref']
+                if mod_kref != kref_match:
+                    continue
+                print(mod_identifier + ": " + mod_kref)
+                identifiers.append(mod_identifier)
+        except:
+            pass
+    if len(identifiers) > 0:
+        r = requests.get(config['notify']['api-url'] + str(mod_id))
+        if r.status_code != 200:
+            return
+        api_data = r.json()
+        send_data = { 'id': mod_id, 'identifiers': identifiers, 'api_data': api_data }
+        send_data_text = json.dumps(send_data)
+        for notify_url in json.loads(config['notify']['notify-urls']):
+            print('Sending to ' + notify_url)
+            try:
+                requests.post(notify_url, data=send_data_text)
+            except:
+                pass
+        print("Processing mod " + str(mod_id) + " complete")
+    
+
+def worker_loop():
+    while True:
+        try:
+            work = worker_data.get(timeout=1)
+            process_mod(work)
+        except:
+            pass
+ 
+worker_thread = threading.Thread(target=worker_loop)
+worker_thread.daemon = True
+worker_thread.start()
+
+@app.route('/')
+def ignore_request():
+    return 'Ignoring request'
+
+@app.route('/notify/', methods=['POST'])
+def notify():
+    try:
+        mod_id_string = request.form['mod_id']
+        mod_id = int(mod_id_string)
+        worker_data.put(mod_id)
+        return 'Notifying for mod ' + mod_id_string
+    except:
+        return 'Error processing request'
+
+#Webhook
+if __name__ == '__main__':
+    app.run(config['notify']['address'], int(config['notify']['port']), debug=True)
+

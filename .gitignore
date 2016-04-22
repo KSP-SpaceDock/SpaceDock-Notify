@@ -1,0 +1,9 @@
+*.swp
+NetKAN/
+__pycache__/
+bin/
+config.ini
+include/
+lib/
+pip-selfcheck.json
+share/
