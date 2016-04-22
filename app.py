@@ -12,7 +12,7 @@ app = Flask(__name__)
 config = configparser.ConfigParser()
 def loadconfig():
     if not os.path.isfile('config.ini'):
-        config['notify'] = { 'address': '127.0.0.1', 'port': '8085', 'api-url': 'http://spacedock.info/api/mod/', 'notify-urls': json.dumps(['http://ckan-url/']), 'celery': 'redis://localhost/1', 'netkan-path': 'NetKAN'}
+        config['notify'] = { 'address': '127.0.0.1', 'port': '8085', 'api-url': 'http://spacedock.info/api/mod/', 'notify-urls': json.dumps(['http://ckan-url/']), 'netkan-path': 'NetKAN'}
         with open('config.ini', 'w') as f:
             config.write(f)
     config.read('config.ini')
