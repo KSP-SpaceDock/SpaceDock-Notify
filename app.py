@@ -21,7 +21,7 @@ loadconfig()
 worker_data = queue.Queue()
 
 def process_mod(mod_id, event_type):
-    print("Processing mod " + str(mod_id))
+    print("Processing mod " + str(mod_id) + ", event type: " + event_type)
     wd = config['notify']['netkan-path']
     call(['git', 'fetch', 'origin'], cwd=wd)
     call(['git', 'reset', '--hard', 'origin/master'], cwd=wd)
@@ -89,7 +89,7 @@ def notify():
         mod_id = int(mod_id_string)
         put_data = { 'mod_id': mod_id, 'event_type': event_type }
         worker_data.put(put_data)
-        return 'Notifying for mod ' + mod_id_string
+        return 'Notifying for mod ' + mod_id_string + ', event type: ' + event_type
     except Exception as detail:
         return 'Error processing request: ' + detail
 
