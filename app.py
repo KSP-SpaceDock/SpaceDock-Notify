@@ -20,7 +20,7 @@ loadconfig()
 #Threading
 worker_data = queue.Queue()
 
-def process_mod(mod_id):
+def process_mod(mod_id, event_type):
     print("Processing mod " + str(mod_id))
     wd = config['notify']['netkan-path']
     call(['git', 'fetch', 'origin'], cwd=wd)
@@ -45,31 +45,33 @@ def process_mod(mod_id):
                     continue
                 print(mod_identifier + ": " + mod_kref)
                 identifiers.append(mod_identifier)
-        except:
-            pass
+        except Exception as detail:
+            print("Error: ", detail)
     if len(identifiers) > 0:
         r = requests.get(config['notify']['api-url'] + str(mod_id))
         if r.status_code != 200:
             return
         api_data = r.json()
-        send_data = { 'id': mod_id, 'identifiers': identifiers, 'api_data': api_data }
+        send_data = { 'id': mod_id, 'event_type': event_type, 'identifiers': identifiers, 'api_data': api_data }
         send_data_text = json.dumps(send_data)
         for notify_url in json.loads(config['notify']['notify-urls']):
             print('Sending to ' + notify_url)
             try:
                 requests.post(notify_url, data=send_data_text)
-            except:
-                pass
+            except Exception as detail:
+                print("Error: ", detail)
         print("Processing mod " + str(mod_id) + " complete")
     
 
 def worker_loop():
     while True:
         try:
-            work = worker_data.get(timeout=1)
-            process_mod(work)
-        except:
-            pass
+            work = worker_data.get()
+            mod_id = work['mod_id']
+            event_type = work['event_type']
+            process_mod(mod_id, event_type)
+        except Exception as detail:
+            print("Error: ", detail)
  
 worker_thread = threading.Thread(target=worker_loop)
 worker_thread.daemon = True
@@ -83,11 +85,13 @@ def ignore_request():
 def notify():
     try:
         mod_id_string = request.form['mod_id']
+        event_type = request.form['event_type']
         mod_id = int(mod_id_string)
-        worker_data.put(mod_id)
+        put_data = { 'mod_id': mod_id, 'event_type': event_type }
+        worker_data.put(put_data)
         return 'Notifying for mod ' + mod_id_string
-    except:
-        return 'Error processing request'
+    except Exception as detail:
+        return 'Error processing request: ' + detail
 
 #Webhook
 if __name__ == '__main__':
