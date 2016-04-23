@@ -95,5 +95,5 @@ def notify():
 
 #Webhook
 if __name__ == '__main__':
-    app.run(config['notify']['address'], int(config['notify']['port']), debug=True)
+    app.run(config['notify']['address'], int(config['notify']['port']))
 
